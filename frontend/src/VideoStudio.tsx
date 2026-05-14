@@ -2,7 +2,8 @@ import React, { useCallback, useMemo } from 'react';
 import { ReactFlow, Controls, Background, addEdge, useNodesState, useEdgesState, Handle, Position, BaseEdge, getBezierPath, useReactFlow, EdgeLabelRenderer } from '@xyflow/react';
 import type { Connection, Edge, NodeProps, EdgeProps } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import type { ScriptLine, CharacterMetadata } from './App';
+import type { ScriptLine, CharacterMetadata } from './types';
+import { API } from './config';
 import { User, Image as ImageIcon, MapPin, Wand2, Loader2, Play, Film, Upload, Trash2, Copy, CheckCircle, X, Eye, Video } from 'lucide-react';
 import axios from 'axios';
 

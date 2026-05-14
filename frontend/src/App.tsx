@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Settings, Play, Pause, Download, Mic, Plus, FileText, Upload, Volume2, Trash2, Loader2, Save, FolderOpen, Copy, CheckCircle, ArrowUpDown, GripVertical, X, ChevronDown, ChevronUp, Image as ImageIcon, Video, User, Wand2 } from 'lucide-react';
 import axios from 'axios';
 import VideoStudio from './VideoStudio';
+import type { ScriptLine, TimelineClip, TimelineVideoClip, VoiceParams, RenderProgress, CharacterMetadata } from './types';
+import { API } from './config';
 
 // Mock data for initial UI state
 const initialScript = [
@@ -10,65 +12,8 @@ const initialScript = [
   { id: 2, speaker: 'elara', text: 'Cậu không thể là người "làm" mọi việc. Cậu phải là người "hướng dẫn".' },
 ];
 
-export interface ScriptLine {
-  id: number;
-  speaker: string;
-  visual_references?: string[]; // IDs của entity dùng làm reference (có thể nhiều hơn 1)
-  text: string;
-  image_prompt?: string;
-  motion_prompt?: string; // Motion prompt cho AI Video
-  video_url?: string; // URL của video sau khi render
-  is_image_generated?: boolean;
-  selected?: boolean;
-}
 
-export interface TimelineClip {
-  id: string;          // Dùng để react key, vd: `line_1_1234`
-  lineId: number;
-  speaker: string;
-  audioUrl: string;
-  filename: string;
-  track: number;
-  startTime: number;
-  duration: number;
-}
-
-interface TimelineVideoClip {
-  id: string;
-  lineId: number;
-  videoUrl: string;
-  startTime: number;
-  duration: number;
-  trimStart?: number;
-  keepSound?: boolean;
-  volume?: number;
-}
-
-interface VoiceParams {
-  gender: string;
-  age: string;
-  pitch: string;
-}
-
-interface RenderProgress {
-  status: 'idle' | 'rendering' | 'assembling' | 'done' | 'error';
-  currentLine: number;
-  totalLines: number;
-  finalAudioUrl: string | null;
-}
-
-export interface CharacterMetadata {
-  type: string;
-  name: string;
-  description: string;
-  image_prompt: string;
-  local_image_path: string;
-  media_id: string | null;
-  last_uploaded_at: number;
-  references?: string[];
-  variations?: any[];
-  variation_context?: string;
-}
+// Shared AudioContext to avoid browser hardware limit (~6 context max)
 
 // Khởi tạo AudioContext dùng chung để tránh lỗi giới hạn phần cứng của trình duyệt (chỉ cho phép tạo ~6 context)
 const SharedAudioContext = window.AudioContext || (window as any).webkitAudioContext;
