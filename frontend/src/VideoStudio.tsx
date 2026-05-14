@@ -2,6 +2,7 @@ import React from 'react';
 import { ReactFlow, Controls, Background } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import axios from 'axios';
+import toast from 'react-hot-toast';
 import type { ScriptLine, CharacterMetadata } from './types';
 import { API } from './config';
 import { VideoStudioContext } from './components/videostudio/VideoStudioContext';
@@ -83,14 +84,14 @@ const VideoStudio: React.FC<VideoStudioProps> = ({
     try {
       const res = await axios.post(API.deleteVariation, { asset_id: assetId, variation_id: variationId });
       if (res.data.status === 'success') setCharactersMetadata(res.data.metadata);
-    } catch (e: any) { alert('Lỗi xoá variation: ' + e.message); }
+    } catch (e: any) { toast.error('Lỗi xoá variation: ' + e.message); }
   }, [setCharactersMetadata]);
 
   const handleToggleReference = React.useCallback(async (assetId: string, variationId: string) => {
     try {
       const res = await axios.post(API.toggleReferenceVariation, { asset_id: assetId, variation_id: variationId });
       if (res.data.status === 'success') setCharactersMetadata(res.data.metadata);
-    } catch { alert('Lỗi khi chuyển đổi ảnh tham chiếu!'); }
+    } catch { toast.error('Lỗi khi chuyển đổi ảnh tham chiếu!'); }
   }, [setCharactersMetadata]);
 
   return (

@@ -3,6 +3,7 @@
 // Script manipulation: export JSON, import JSON, clear timeline.
 // These are pure utility functions wired to the shared script state.
 // ==========================================================================
+import toast from 'react-hot-toast';
 import type { ScriptLine, TimelineClip } from '../types';
 
 interface UseScriptManagerOptions {
@@ -48,7 +49,7 @@ export function useScriptManager({
           setTimelineTime(0);
         }
       } catch {
-        alert('Lỗi: File JSON không hợp lệ!');
+        toast.error('Lỗi: File JSON không hợp lệ!');
       } finally {
         if (importInputRef.current) importInputRef.current.value = '';
       }

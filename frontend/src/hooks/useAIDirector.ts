@@ -1,6 +1,7 @@
 import { useCallback, useRef } from 'react';
 import React from 'react';
 import axios from 'axios';
+import toast from 'react-hot-toast';
 import type { Node, Edge } from '@xyflow/react';
 import type { ScriptLine, CharacterMetadata } from '../types';
 import { API } from '../config';
@@ -82,7 +83,7 @@ export function useAIDirector({
         ...n, data: { ...n.data, isGenerating: false, frameUrl: url, frameMediaId: res.data.media_id },
       } : n));
     } catch (err: any) {
-      alert('Lỗi khi gọi API tạo ảnh: ' + err.message);
+      toast.error('Lỗi khi gọi API tạo ảnh: ' + err.message);
       setNodes((nds) => nds.map((n) => n.id === nodeId ? { ...n, data: { ...n.data, isGenerating: false } } : n));
     }
   }, [charactersMetadata, nodesRef, edgesRef, setNodes]);
@@ -123,7 +124,7 @@ export function useAIDirector({
         style: { stroke: '#10b981', strokeWidth: 2, opacity: 0.6 },
       }));
     } catch (err: any) {
-      alert('Lỗi khi gọi API tạo Video: ' + err.message);
+      toast.error('Lỗi khi gọi API tạo Video: ' + err.message);
       setNodes((nds) => nds.map((n) => n.id === nodeId ? { ...n, data: { ...n.data, isGeneratingVideo: false } } : n));
     }
   }, [charactersMetadata, nodesRef, edgesRef, setNodes, setEdges]);
@@ -146,7 +147,7 @@ export function useAIDirector({
       });
       setNodes((nds) => nds.map((n) => n.id === nodeId ? { ...n, data: { ...n.data, prompt: res.data.prompt } } : n));
     } catch (e: any) {
-      alert('Lỗi khi Regen Prompt: ' + e.message);
+      toast.error('Lỗi khi Regen Prompt: ' + e.message);
     }
   }, [script, nodesRef, setNodes]);
 
@@ -155,7 +156,7 @@ export function useAIDirector({
     try {
       const response = await axios.post(API.generateStoryboard, { script, metadata: charactersMetadata });
       const shots = response.data.shots;
-      if (!shots?.length) { alert('AI Director không trả về được cảnh nào. Vui lòng thử lại!'); return; }
+      if (!shots?.length) { toast.error('AI Director không trả về được cảnh nào. Vui lòng thử lại!'); return; }
 
       const newNodes: Node[] = [];
       const newEdges: Edge[] = [];
@@ -192,7 +193,7 @@ export function useAIDirector({
       setNodes(newNodes);
       setEdges(newEdges);
     } catch (error: any) {
-      alert('Lỗi khi gọi AI Director: ' + error.message);
+      toast.error('Lỗi khi gọi AI Director: ' + error.message);
     } finally {
       setIsGeneratingStoryboard(false);
     }
@@ -205,10 +206,10 @@ export function useAIDirector({
       const response = await axios.post(API.extractEntities, { text: script.map((l) => l.text).join('\n\n') });
       if (response.data?.metadata) {
         setCharactersMetadata(response.data.metadata);
-        alert('Đã trích xuất xong Danh sách Nhân Vật & Bối Cảnh!');
+        toast.success('Đã trích xuất xong Danh sách Nhân Vật & Bối Cảnh!');
       }
     } catch {
-      alert('Lỗi khi trích xuất thực thể. Vui lòng check console backend.');
+      toast.error('Lỗi khi trích xuất thực thể. Vui lòng check console backend.');
     } finally {
       setIsExtractingEntities(false);
     }
@@ -232,7 +233,7 @@ export function useAIDirector({
       });
       handleUpdateAsset(id, 'image_prompt', res.data.prompt);
     } catch (e: any) {
-      alert('Lỗi Enhance: ' + e.message);
+      toast.error('Lỗi Enhance: ' + e.message);
     } finally {
       setEnhancingAssetId(null);
     }

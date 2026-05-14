@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Settings, Play, Pause, Download, Mic, Plus, FileText, Upload, Volume2, Trash2, Loader2, Save, FolderOpen, Copy, CheckCircle, ArrowUpDown, GripVertical, X, ChevronDown, ChevronUp, Image as ImageIcon, Video, User, Wand2 } from 'lucide-react';
 import axios from 'axios';
+import toast, { Toaster } from 'react-hot-toast';
 import VideoStudio from './VideoStudio';
 import type { ScriptLine, TimelineClip, TimelineVideoClip, VoiceParams, RenderProgress, CharacterMetadata } from './types';
 import { API } from './config';
@@ -499,7 +500,7 @@ function App() {
     const linesToRender = hasSelection ? script.filter(line => line.selected) : script;
 
     if (linesToRender.length === 0) {
-      alert("Không có dòng nào để render!");
+      toast.error("Không có dòng nào để render!");
       return;
     }
     
@@ -572,7 +573,7 @@ function App() {
         
       } catch (e) {
         console.error("Lỗi render line:", line.id);
-        alert("Lỗi khi render câu thoại: " + line.text);
+        toast.error("Lỗi khi render câu thoại: " + line.text);
         setRenderProgress(prev => ({ ...prev, status: 'error' }));
         return;
       }
@@ -591,7 +592,7 @@ function App() {
       
     } catch (e) {
       console.error("Lỗi Assemble:", e);
-      alert("Lỗi khi ghép file audio!");
+      toast.error("Lỗi khi ghép file audio!");
       setRenderProgress(prev => ({ ...prev, status: 'error' }));
     }
   };
@@ -606,11 +607,11 @@ function App() {
         speaker,
         instruct
       });
-      alert(response.data.message || "Tạo giọng ảo thành công! Đã khoá voice profile.");
+      toast.success(response.data.message || "Tạo giọng ảo thành công! Đã khoá voice profile.");
       setLockedVoices(prev => ({ ...prev, [speaker]: true }));
     } catch (error) {
       console.error(error);
-      alert("Lỗi tạo giọng ảo. Hãy kiểm tra console Backend.");
+      toast.error("Lỗi tạo giọng ảo. Hãy kiểm tra console Backend.");
     } finally {
       setIsCreatingSynthetic(null);
     }
@@ -627,11 +628,11 @@ function App() {
       const response = await axios.post('http://localhost:8000/api/extract-entities', { text: fullText });
       if (response.data && response.data.metadata) {
         setCharactersMetadata(response.data.metadata);
-        alert("Đã trích xuất xong Danh sách Nhân Vật & Bối Cảnh!");
+        toast.success("Đã trích xuất xong Danh sách Nhân Vật & Bối Cảnh!");
       }
     } catch (e) {
       console.error(e);
-      alert("Lỗi khi trích xuất thực thể. Vui lòng check console.");
+      toast.error("Lỗi khi trích xuất thực thể. Vui lòng check console.");
     } finally {
       setIsExtractingEntities(false);
     }
@@ -644,10 +645,10 @@ function App() {
         lockedVoices,
         flowkitProjectId
       });
-      alert("Đã lưu toàn bộ thiết lập Voice Casting và Project ID thành công! Bạn có thể dùng lại cho Chapter sau.");
+      toast.success("Đã lưu toàn bộ thiết lập Voice Casting và Project ID thành công!");
     } catch (e) {
       console.error(e);
-      alert("Lỗi khi lưu thiết lập!");
+      toast.error("Lỗi khi lưu thiết lập!");
     }
   };
 
@@ -668,7 +669,7 @@ function App() {
           const videoUri = media.videoUri; // Lấy URL tải xuống
           setVideoStatus(prev => ({...prev, [sceneId]: "Đã Render Xong!"}));
           setScript(prev => prev.map(line => line.id === sceneId ? { ...line, video_url: videoUri } : line));
-          alert("Video render xong! Bạn có thể xem ngay bằng cách bấm vào Preview ở Script.");
+          toast.success("Video render xong! Bạn có thể xem ngay bằng cách bấm vào Preview ở Script.");
         } else if (status === 'MEDIA_GENERATION_STATUS_SCHEDULED' || status === 'MEDIA_GENERATION_STATUS_PROCESSING') {
           setVideoStatus(prev => ({...prev, [sceneId]: "Vẫn đang Render (3-5p)..."}));
         } else {
@@ -685,7 +686,7 @@ function App() {
 
   const handleEnhanceMotion = async (lineId: number, dialogue: string, rawMotion: string) => {
     if (!rawMotion) {
-      alert("Vui lòng nhập mô tả motion cơ bản trước khi Enhance!");
+      toast.error("Vui lòng nhập mô tả motion cơ bản trước khi Enhance!");
       return;
     }
     setIsEnhancingMotion(lineId);
@@ -702,7 +703,7 @@ function App() {
       }
     } catch (e) {
       console.error(e);
-      alert("Lỗi khi enhance motion prompt!");
+      toast.error("Lỗi khi enhance motion prompt!");
     } finally {
       setIsEnhancingMotion(null);
     }
@@ -721,7 +722,7 @@ function App() {
       });
       
       if (res.data.status === 'success') {
-        alert("Đã gửi lệnh Render Video lên FlowKit thành công! Đang xử lý dưới nền.");
+        toast.success("Đã gửi lệnh Render Video lên FlowKit! Đang xử lý dưới nền.");
         if (res.data.operation_name) {
           setRenderingVideos(prev => ({...prev, [lineId]: res.data.operation_name}));
           setVideoStatus(prev => ({...prev, [lineId]: "Đang Render (Chờ 3-5 phút)..."}));
@@ -730,7 +731,7 @@ function App() {
     } catch (error: any) {
       console.error(error);
       const detail = error.response?.data?.detail;
-      alert(detail ? detail : "Lỗi khi tạo video. Hãy kiểm tra FlowKit Extension hoặc Backend.");
+      toast.error(detail ? detail : "Lỗi khi tạo video. Hãy kiểm tra FlowKit Extension hoặc Backend.");
     } finally {
       setIsGeneratingVideo(null);
     }
@@ -765,7 +766,7 @@ function App() {
       }
     } catch (e) {
       console.error(e);
-      alert("Lỗi upload ảnh nhân vật!");
+      toast.error("Lỗi upload ảnh nhân vật!");
     }
   };
 
@@ -778,12 +779,12 @@ function App() {
       }
     } catch (e) {
       console.error(e);
-      alert("Lỗi khi xoá thực thể!");
+      toast.error("Lỗi khi xoá thực thể!");
     }
   };
 
   const handleGenerateAssetImage = async (characterId: string, prompt: string) => {
-    if (!prompt) return alert("Không có prompt để tạo ảnh.");
+    if (!prompt) { toast.error("Không có prompt để tạo ảnh."); return; }
     setIsGeneratingAsset(characterId);
     try {
       const entity = charactersMetadata[characterId];
@@ -824,12 +825,12 @@ function App() {
       if (downloadRes.data.status === "success") {
         setCharactersMetadata(downloadRes.data.metadata);
       } else {
-        alert("Lưu ảnh thất bại!");
+        toast.error("Lưu ảnh thất bại!");
       }
       setIsGeneratingAsset(null);
     } catch (err: any) {
       console.error(err);
-      alert("Lỗi gọi API: " + err.message);
+      toast.error("Lỗi gọi API: " + err.message);
       setIsGeneratingAsset(null);
     }
   };
@@ -901,7 +902,7 @@ function App() {
       audio.play();
     } catch (error) {
       console.error("Lỗi khi test voice:", error);
-      alert("Lỗi khi gọi OmniVoice Backend.");
+      toast.error("Lỗi khi gọi OmniVoice Backend.");
       setPlayingId(null);
     }
   };
@@ -929,7 +930,7 @@ function App() {
     
     audio.play().catch(e => {
       console.error("Lỗi phát giọng mẫu:", e);
-      alert("Không tìm thấy file giọng mẫu. Hãy tạo lại Diễn Viên Ảo.");
+      toast.error("Không tìm thấy file giọng mẫu. Hãy tạo lại Diễn Viên Ảo.");
       setPlayingVoiceRef(null);
     });
     
@@ -957,7 +958,7 @@ function App() {
         }
       } catch (error) {
         console.error("Lỗi khi tạo kịch bản:", error);
-        alert("Có lỗi xảy ra khi gọi AI. Vui lòng check console Backend.");
+        toast.error("Có lỗi xảy ra khi gọi AI. Vui lòng check console Backend.");
       } finally {
         setIsGenerating(false);
         if (fileInputRef.current) fileInputRef.current.value = '';
@@ -1056,7 +1057,7 @@ function App() {
     });
     
     setTimelineVideoClips(newVideoClips);
-    alert(`Đã đồng bộ ${count} Video vào Timeline thành công!`);
+    toast.success(`Đã đồng bộ ${count} Video vào Timeline thành công!`);
   };
 
   const uniqueSpeakers = Array.from(new Set(script.map(line => line.speaker.toLowerCase())));
@@ -1067,6 +1068,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-300 font-sans selection:bg-indigo-500/30 flex flex-col">
+      <Toaster position="top-right" toastOptions={{ style: { background: '#1e293b', color: '#cbd5e1', border: '1px solid #334155' } }} />
       
             <Header 
         handleImportProject={handleImportProject}

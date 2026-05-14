@@ -3,8 +3,8 @@
 // Handles mixing and downloading the final audiobook output.
 // Calls /api/mix-timeline (audio only) or /api/mix-video-timeline (with video).
 // ==========================================================================
-import { useState } from 'react';
 import axios from 'axios';
+import toast from 'react-hot-toast';
 import type { TimelineClip, TimelineVideoClip, RenderProgress } from '../types';
 import { API } from '../config';
 
@@ -22,7 +22,7 @@ export function useAudioMixer({
 
   const mixAndExport = async () => {
     if (timelineClips.length === 0) {
-      alert('Không có clip nào trên Timeline!');
+      toast.error('Không có clip nào trên Timeline!');
       return;
     }
 
@@ -74,7 +74,7 @@ export function useAudioMixer({
       setRenderProgress({ status: 'done', currentLine: 0, totalLines: 0, finalAudioUrl: outUrl });
     } catch (e) {
       console.error('Lỗi Mix:', e);
-      alert('Lỗi khi Mix Timeline!');
+      toast.error('Lỗi khi Mix Timeline!');
       setRenderProgress({ status: 'error', currentLine: 0, totalLines: 0, finalAudioUrl: null });
     }
   };
