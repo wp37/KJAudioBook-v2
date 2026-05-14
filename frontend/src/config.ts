@@ -45,6 +45,10 @@ export const API = {
   projectProfile:     `${API_BASE}/api/project-profile`,
 
   // FlowKit
-  flowkitWs:          `${API_BASE.replace('http', 'ws')}/ws/flowkit`,
+  flowkitWs:          `${API_BASE.replace(/^http/, 'ws')}/ws/flowkit`,
   flowkitCallback:    `${API_BASE}/api/ext/callback`,
+
+  // Mix progress (WebSocket) + output file download
+  mixProgressWs:      `${API_BASE.replace(/^http/, 'ws')}/ws/mix-progress`,
+  outputFile:         `${API_BASE}/api/output-file`,
 } as const;
