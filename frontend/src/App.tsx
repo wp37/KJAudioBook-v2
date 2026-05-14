@@ -4,6 +4,10 @@ import axios from 'axios';
 import VideoStudio from './VideoStudio';
 import type { ScriptLine, TimelineClip, TimelineVideoClip, VoiceParams, RenderProgress, CharacterMetadata } from './types';
 import { API } from './config';
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
+import { useTimelinePlayback } from './hooks/useTimelinePlayback';
+import { useAudioMixer } from './hooks/useAudioMixer';
+import { useScriptManager } from './hooks/useScriptManager';
 
 // Mock data for initial UI state
 const initialScript = [
@@ -443,8 +447,7 @@ function App() {
   const [timelineTime, setTimelineTime] = useState(0);
   const timelineAudioRefs = useRef<{[id: string]: HTMLAudioElement}>({});
   const timelineVideoRefs = useRef<{[id: string]: HTMLVideoElement}>({});
-  const animationRef = useRef<number | undefined>(undefined);
-  const lastUpdateRef = useRef<number | undefined>(undefined);
+
 
   // Sync video volumes
   useEffect(() => {
@@ -489,96 +492,32 @@ function App() {
         }
       });
     }
-    setIsPlayingTimeline(!isPlayingTimeline);
+    setIsPlayingTimeline(prev => !prev);
   };
 
-  const toggleTimelinePlayRef = useRef(toggleTimelinePlay);
-  const seekTimelineToRef = useRef(seekTimelineTo);
-  const timelineTimeRef = useRef(timelineTime);
-
-  useEffect(() => {
-    toggleTimelinePlayRef.current = toggleTimelinePlay;
-    seekTimelineToRef.current = seekTimelineTo;
-    timelineTimeRef.current = timelineTime;
+  // ── Hooks ────────────────────────────────────────────────────────────────
+  // Keyboard shortcuts (Space / ArrowLeft / ArrowRight)
+  useKeyboardShortcuts({
+    onTogglePlay: toggleTimelinePlay,
+    onSeek: seekTimelineTo,
+    getCurrentTime: () => timelineTime,
   });
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement) return;
+  // Timeline animation loop + seek sync
+  const { seekTimelineTo: _seek, toggleTimelinePlay: _toggle } = useTimelinePlayback({
+    isPlayingTimeline,
+    setIsPlayingTimeline,
+    timelineTime,
+    setTimelineTime,
+    timelineClips,
+    timelineVideoClips,
+    timelineAudioRefs,
+    timelineVideoRefs,
+  });
+  // Re-export so seekTimelineTo/toggleTimelinePlay below still work for JSX
+  // (these shadow the local ones — that's intentional)
 
-      if (e.code === 'Space') {
-        e.preventDefault();
-        toggleTimelinePlayRef.current();
-      } else if (e.code === 'ArrowRight') {
-        e.preventDefault();
-        seekTimelineToRef.current(timelineTimeRef.current + 0.5);
-      } else if (e.code === 'ArrowLeft') {
-        e.preventDefault();
-        seekTimelineToRef.current(Math.max(0, timelineTimeRef.current - 0.5));
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
 
-  useEffect(() => {
-    if (isPlayingTimeline) {
-      lastUpdateRef.current = performance.now();
-      
-      const updateTimeline = () => {
-        const now = performance.now();
-        const deltaSeconds = (now - (lastUpdateRef.current || now)) / 1000;
-        lastUpdateRef.current = now;
-        
-        setTimelineTime(prevTime => {
-          const newTime = prevTime + deltaSeconds;
-          
-          // Check for clips to play
-          timelineClips.forEach(clip => {
-            // Nếu con trỏ vừa lướt qua startTime của clip
-            if (prevTime <= clip.startTime && newTime > clip.startTime) {
-              const audio = timelineAudioRefs.current[clip.id];
-              if (audio) {
-                audio.currentTime = 0;
-                audio.play().catch(e => console.log("Play error", e));
-              }
-            }
-          });
-
-          // Check for video clips to play
-          timelineVideoClips.forEach(clip => {
-            if (prevTime <= clip.startTime && newTime > clip.startTime) {
-              const video = timelineVideoRefs.current[clip.id];
-              if (video) {
-                video.currentTime = clip.trimStart || 0;
-                video.play().catch(e => console.log("Video Play error", e));
-              }
-            }
-          });
-          
-          return newTime;
-        });
-        
-        animationRef.current = requestAnimationFrame(updateTimeline);
-      };
-      
-      animationRef.current = requestAnimationFrame(updateTimeline);
-    } else {
-      if (animationRef.current) cancelAnimationFrame(animationRef.current);
-      // Pause all audio
-      Object.values(timelineAudioRefs.current).forEach(audio => {
-        if (audio) audio.pause();
-      });
-      // Pause all video
-      Object.values(timelineVideoRefs.current).forEach(video => {
-        if (video) video.pause();
-      });
-    }
-    
-    return () => {
-      if (animationRef.current) cancelAnimationFrame(animationRef.current);
-    };
-  }, [isPlayingTimeline, timelineClips]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
@@ -597,96 +536,21 @@ function App() {
     localStorage.setItem('audiobook_active_tab', activeTab);
   }, [activeTab]);
 
-  const exportProject = () => {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(script, null, 2));
-    const downloadAnchorNode = document.createElement('a');
-    downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", "audiobook_project.json");
-    document.body.appendChild(downloadAnchorNode); 
-    downloadAnchorNode.click();
-    downloadAnchorNode.remove();
-  };
+  // ── Audio Mixer Hook ──────────────────────────────────────────────────────
+  const { mixAndExport: handleMixAndExport } = useAudioMixer({
+    timelineClips,
+    timelineVideoClips,
+    setRenderProgress,
+  });
 
-  const handleImportProject = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const json = JSON.parse(e.target?.result as string);
-        if (Array.isArray(json)) {
-          setScript(json);
-          setTimelineClips([]);
-          setTimelineTime(0);
-        }
-      } catch (err) {
-        alert("Lỗi: File JSON không hợp lệ!");
-      } finally {
-        if (importInputRef.current) importInputRef.current.value = '';
-      }
-    };
-    reader.readAsText(file);
-  };
-
-  const handleClearTimeline = () => {
-    if (window.confirm("Bạn có chắc muốn xóa sạch Timeline (DAW) không?")) {
-      setTimelineClips([]);
-      setTimelineTime(0);
-    }
-  };
-
-  const handleMixAndExport = async () => {
-    if (timelineClips.length === 0) {
-      alert("Không có clip nào trên Timeline!");
-      return;
-    }
-    
-    setRenderProgress({ status: 'assembling', currentLine: 0, totalLines: 0, finalAudioUrl: null });
-    try {
-      const audioPayload = timelineClips.map(c => ({
-        filename: c.filename,
-        startTime: c.startTime,
-        track: c.track
-      }));
-
-      const hasVideo = timelineVideoClips.length > 0;
-      let url = 'http://localhost:8000/api/mix-timeline';
-      let payload: any = { clips: audioPayload };
-      let downloadName = 'final_audiobook_mix.mp3';
-
-      if (hasVideo) {
-        url = 'http://localhost:8000/api/mix-video-timeline';
-        payload = {
-          audio_clips: audioPayload,
-          video_clips: timelineVideoClips.map(c => ({
-            videoUrl: c.videoUrl,
-            startTime: c.startTime,
-            duration: c.duration,
-            keepSound: c.keepSound || false,
-            volume: c.volume ?? 100
-          }))
-        };
-        downloadName = 'final_audiobook_video.mp4';
-      }
-
-      const res = await axios.post(url, payload, { responseType: 'blob' });
-      const outUrl = URL.createObjectURL(new Blob([res.data]));
-      
-      const downloadAnchorNode = document.createElement('a');
-      downloadAnchorNode.setAttribute("href", outUrl);
-      downloadAnchorNode.setAttribute("download", downloadName);
-      document.body.appendChild(downloadAnchorNode); 
-      downloadAnchorNode.click();
-      downloadAnchorNode.remove();
-      
-      setRenderProgress({ status: 'done', currentLine: 0, totalLines: 0, finalAudioUrl: outUrl });
-    } catch (e) {
-      console.error("Lỗi Mix:", e);
-      alert("Lỗi khi Mix Timeline!");
-      setRenderProgress({ status: 'error', currentLine: 0, totalLines: 0, finalAudioUrl: null });
-    }
-  };
+  // ── Script Manager Hook ───────────────────────────────────────────────────
+  const { exportProject, handleImportProject, handleClearTimeline } = useScriptManager({
+    script,
+    setScript,
+    setTimelineClips,
+    setTimelineTime,
+    importInputRef,
+  });
 
   const handleRenderAll = async () => {
     // Ưu tiên render các dòng được chọn. Nếu không chọn dòng nào thì coi như render tất cả.
