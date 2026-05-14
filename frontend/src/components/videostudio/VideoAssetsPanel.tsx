@@ -90,8 +90,26 @@ const VideoAssetsPanel: React.FC<VideoAssetsPanelProps> = ({
     </div>
 
     {Object.keys(charactersMetadata).length === 0 ? (
-      <div className="text-center py-6 border border-dashed border-slate-700 rounded-xl text-slate-500 text-xs">
-        Chưa có nhân vật nào.<br />Hãy nhấn "Extract Visuals" ở Audio Studio.
+      <div className="text-center py-10 px-4 border border-dashed border-slate-700 rounded-xl bg-slate-900/40 flex flex-col items-center justify-center">
+        <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center mb-3">
+          <Wand2 className="w-5 h-5 text-emerald-400" />
+        </div>
+        <h3 className="text-xs font-semibold text-slate-300 mb-1 uppercase tracking-wider">Chưa có Nhân vật</h3>
+        <p className="text-[11px] text-slate-500 leading-relaxed mb-4">
+          Dùng AI phân tích kịch bản để tự động tạo danh sách Nhân vật và Bối cảnh.
+        </p>
+        <button
+          onClick={onExtractEntities}
+          disabled={isExtractingEntities || script.length === 0}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold rounded-md bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-50 disabled:pointer-events-none transition-colors shadow-lg shadow-emerald-500/20"
+          title={script.length === 0 ? 'Chưa có kịch bản để phân tích' : 'Trích xuất nhân vật & bối cảnh từ script'}
+        >
+          {isExtractingEntities ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />}
+          {isExtractingEntities ? 'Extracting...' : 'Extract Visuals'}
+        </button>
+        {script.length === 0 && (
+          <p className="text-[10px] text-amber-400/80 mt-2">⚠ Cần upload kịch bản trước</p>
+        )}
       </div>
     ) : (
       <div className="flex flex-col gap-3">

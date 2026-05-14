@@ -61,7 +61,9 @@ Thin 3px bar at the bottom edge of the header. Determinate indigo fill during li
 - **Outcome:** Big perceived-quality upgrade for ~5 lines of JSX
 - **Risk:** Low
 
-### [ ] 6. Better empty states
+### [x] 6. Better empty states
+- Script list empty: centered icon + heading + guidance pointing users to the File ▾ menu or the "+ Thêm dòng" button.
+- Visual Assets empty: replaced bare text with icon + heading + a real CTA button (calls onExtractEntities directly). Disabled state shows "⚠ Cần upload kịch bản trước" if script is empty too.
 - **Files:** `components/script/ScriptSidebar.tsx`, `components/videostudio/VideoAssetsPanel.tsx`
 - **Today:** Empty script list shows just the "+ Add Line" button; empty asset panel shows the form only
 - **Change:** When `script.length === 0`, show centered icon + tagline + big primary CTA button:

@@ -104,6 +104,18 @@ export function ScriptSidebar({
 
         {/* Script Lines */}
         <div className="space-y-4" onDragOver={handleDragOverContainer}>
+          {script.length === 0 && (
+            <div className="text-center py-16 border border-dashed border-slate-700 rounded-xl bg-slate-900/50 flex flex-col items-center justify-center">
+              <div className="w-14 h-14 rounded-full bg-indigo-500/10 flex items-center justify-center mb-4">
+                <FileText className="w-6 h-6 text-indigo-400" />
+              </div>
+              <h3 className="text-slate-300 font-semibold mb-1">Chưa có kịch bản nào</h3>
+              <p className="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
+                Mở <span className="text-indigo-400 font-medium">File ▾</span> ở thanh trên cùng để Upload .md (AI sinh script),
+                hoặc bấm <span className="text-indigo-400 font-medium">+ Thêm dòng</span> ở trên để tạo dòng đầu tiên.
+              </p>
+            </div>
+          )}
           {script.map((line, index) => (
             <div
               key={line.id}
