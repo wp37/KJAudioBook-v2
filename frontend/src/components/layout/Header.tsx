@@ -5,10 +5,10 @@
 // Callbacks passed as props (handleRenderAll, handleMixAndExport, etc.)
 // because they rely on business logic still in App.tsx.
 // ==========================================================================
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
   Mic, Video, Settings, Play, Pause, Download,
-  Upload, Save, FolderOpen, Loader2,
+  Upload, Save, FolderOpen, Loader2, ChevronDown,
 } from 'lucide-react';
 import { useProjectStore } from '../../store/useProjectStore';
 
@@ -42,6 +42,19 @@ export function Header({
 
   const importInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef   = useRef<HTMLInputElement>(null);
+  const fileMenuRef    = useRef<HTMLDivElement>(null);
+  const [fileMenuOpen, setFileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (!fileMenuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (fileMenuRef.current && !fileMenuRef.current.contains(e.target as Node)) {
+        setFileMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [fileMenuOpen]);
 
   const isRendering = renderProgress.status === 'rendering' || renderProgress.status === 'assembling';
   const selectedCount = script.filter(l => l.selected).length;
@@ -123,33 +136,52 @@ export function Header({
                 onChange={handleFileUpload}
               />
 
-              <button
-                id="btn-load-json"
-                onClick={() => importInputRef.current?.click()}
-                className="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-full text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
-                title="Load kịch bản (JSON)"
-              >
-                <FolderOpen className="w-4 h-4" /> Load JSON
-              </button>
+              {/* File menu (Load / Save / Upload) */}
+              <div className="relative" ref={fileMenuRef}>
+                <button
+                  id="btn-file-menu"
+                  onClick={() => setFileMenuOpen(o => !o)}
+                  className="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-full text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
+                  title="File operations"
+                >
+                  {isGenerating
+                    ? <Loader2 className="w-4 h-4 animate-spin text-indigo-400" />
+                    : <FolderOpen className="w-4 h-4" />}
+                  {isGenerating ? 'Đang nhờ AI...' : 'File'}
+                  <ChevronDown className={`w-3 h-3 transition-transform ${fileMenuOpen ? 'rotate-180' : ''}`} />
+                </button>
 
-              <button
-                id="btn-save-json"
-                onClick={exportProject}
-                className="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-full text-slate-300 hover:text-white hover:bg-slate-800 transition-colors border-r border-slate-700 pr-4 mr-1"
-                title="Lưu kịch bản (JSON)"
-              >
-                <Save className="w-4 h-4" /> Save JSON
-              </button>
-
-              <button
-                id="btn-upload-md"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isGenerating}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-full bg-slate-800 hover:bg-slate-700 transition-colors border border-slate-700 disabled:opacity-50"
-              >
-                {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                {isGenerating ? 'Đang nhờ AI...' : 'Upload .md'}
-              </button>
+                {fileMenuOpen && (
+                  <div
+                    className="absolute right-0 top-full mt-1 w-56 rounded-lg bg-slate-900 border border-slate-800 shadow-2xl py-1 z-50"
+                    role="menu"
+                  >
+                    <button
+                      onClick={() => { importInputRef.current?.click(); setFileMenuOpen(false); }}
+                      className="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
+                    >
+                      <FolderOpen className="w-4 h-4 text-slate-500" />
+                      <span className="flex-1 text-left">Load kịch bản (JSON)</span>
+                    </button>
+                    <button
+                      onClick={() => { exportProject(); setFileMenuOpen(false); }}
+                      className="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
+                    >
+                      <Save className="w-4 h-4 text-slate-500" />
+                      <span className="flex-1 text-left">Lưu kịch bản (JSON)</span>
+                    </button>
+                    <div className="my-1 border-t border-slate-800" />
+                    <button
+                      onClick={() => { fileInputRef.current?.click(); setFileMenuOpen(false); }}
+                      disabled={isGenerating}
+                      className="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-colors disabled:opacity-50 disabled:hover:bg-transparent"
+                    >
+                      <Upload className="w-4 h-4 text-slate-500" />
+                      <span className="flex-1 text-left">Upload .md (AI gen script)</span>
+                    </button>
+                  </div>
+                )}
+              </div>
 
               <button
                 id="btn-render-all"
