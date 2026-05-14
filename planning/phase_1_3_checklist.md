@@ -101,4 +101,4 @@
 - [x] Thay inspector JSX block → `<PropertiesInspector />`
 - [x] `npx tsc --noEmit` pass clean sau khi wire
 - [ ] Visual verify toàn bộ UI hoạt động đúng
-- [ ] Git commit checkpoint
+- [x] Git commit checkpoint

@@ -25,11 +25,17 @@ Mỗi khi mở máy lên làm việc, bro cần mở **2 Terminal** riêng biệ
    # Windows (Powershell)
    venv\Scripts\Activate.ps1
    ```
+
+   
+
+
 3. Chạy server FastAPI:
    ```bash
    cd audiobook_builder
    python server.py
    ```
+venv\Scripts\python.exe -m uvicorn server:app --reload --port 8000
+
    *Lưu ý: Đợi màn hình báo "OmniVoice đã sẵn sàng" thì mới bắt đầu xài Web.*
 
    taskkill /F /IM python.exe
