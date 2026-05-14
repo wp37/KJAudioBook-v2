@@ -8,6 +8,8 @@ import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useTimelinePlayback } from './hooks/useTimelinePlayback';
 import { useAudioMixer } from './hooks/useAudioMixer';
 import { useScriptManager } from './hooks/useScriptManager';
+import { useProjectStore } from './store/useProjectStore';
+import { usePlaybackStore } from './store/usePlaybackStore';
 
 // Mock data for initial UI state
 const initialScript = [
@@ -87,111 +89,85 @@ const Waveform = ({ audioUrl, width }: { audioUrl: string, width: number }) => {
 };
 
 function App() {
-  const [activeTab, setActiveTab] = useState<'audio' | 'video' | 'post-production'>(() => {
-    return (localStorage.getItem('audiobook_active_tab') as 'audio' | 'video' | 'post-production') || 'audio';
-  });
+  // ── Zustand: Project Store ────────────────────────────────────────────────
+  const activeTab            = useProjectStore(s => s.activeTab);
+  const setActiveTab         = useProjectStore(s => s.setActiveTab);
+  const script               = useProjectStore(s => s.script);
+  const setScript            = useProjectStore(s => s.setScript);
+  const timelineClips        = useProjectStore(s => s.timelineClips);
+  const setTimelineClips     = useProjectStore(s => s.setTimelineClips);
+  const timelineVideoClips   = useProjectStore(s => s.timelineVideoClips);
+  const setTimelineVideoClips = useProjectStore(s => s.setTimelineVideoClips);
+  const lockedVoices         = useProjectStore(s => s.lockedVoices);
+  const setLockedVoices      = useProjectStore(s => s.setLockedVoices);
+  const speakerVoiceParams   = useProjectStore(s => s.speakerVoiceParams);
+  const setSpeakerVoiceParams = useProjectStore(s => s.setSpeakerVoiceParams);
+  const charactersMetadata   = useProjectStore(s => s.charactersMetadata);
+  const setCharactersMetadata = useProjectStore(s => s.setCharactersMetadata);
+  const renderProgress       = useProjectStore(s => s.renderProgress);
+  const setRenderProgress    = useProjectStore(s => s.setRenderProgress);
+  const flowkitProjectId     = useProjectStore(s => s.flowkitProjectId);
+  const setFlowkitProjectId  = useProjectStore(s => s.setFlowkitProjectId);
+  const globalArtStyle       = useProjectStore(s => s.globalArtStyle);
+  const setGlobalArtStyle    = useProjectStore(s => s.setGlobalArtStyle);
+
+  // ── Zustand: Playback Store ───────────────────────────────────────────────
+  const isPlayingTimeline        = usePlaybackStore(s => s.isPlayingTimeline);
+  const setIsPlayingTimeline     = usePlaybackStore(s => s.setIsPlayingTimeline);
+  const timelineTime             = usePlaybackStore(s => s.timelineTime);
+  const setTimelineTime          = usePlaybackStore(s => s.setTimelineTime);
+  const zoomLevel                = usePlaybackStore(s => s.zoomLevel);
+  const setZoomLevel             = usePlaybackStore(s => s.setZoomLevel);
+  const timelineHeight           = usePlaybackStore(s => s.timelineHeight);
+  const setTimelineHeight        = usePlaybackStore(s => s.setTimelineHeight);
+  const draggingTimelineClipId   = usePlaybackStore(s => s.draggingTimelineClipId);
+  const setDraggingTimelineClipId = usePlaybackStore(s => s.setDraggingTimelineClipId);
+  const timelineDragStartX       = usePlaybackStore(s => s.timelineDragStartX);
+  const setTimelineDragStartX    = usePlaybackStore(s => s.setTimelineDragStartX);
+  const timelineDragStartY       = usePlaybackStore(s => s.timelineDragStartY);
+  const setTimelineDragStartY    = usePlaybackStore(s => s.setTimelineDragStartY);
+  const timelineDragStartStartTime    = usePlaybackStore(s => s.timelineDragStartStartTime);
+  const setTimelineDragStartStartTime = usePlaybackStore(s => s.setTimelineDragStartStartTime);
+  const timelineDragStartTrack   = usePlaybackStore(s => s.timelineDragStartTrack);
+  const setTimelineDragStartTrack = usePlaybackStore(s => s.setTimelineDragStartTrack);
+  const draggingVideoClipId      = usePlaybackStore(s => s.draggingVideoClipId);
+  const setDraggingVideoClipId   = usePlaybackStore(s => s.setDraggingVideoClipId);
+  const resizingVideoClipId      = usePlaybackStore(s => s.resizingVideoClipId);
+  const setResizingVideoClipId   = usePlaybackStore(s => s.setResizingVideoClipId);
+  const videoResizeEdge          = usePlaybackStore(s => s.videoResizeEdge);
+  const setVideoResizeEdge       = usePlaybackStore(s => s.setVideoResizeEdge);
+  const videoDragStartDuration   = usePlaybackStore(s => s.videoDragStartDuration);
+  const setVideoDragStartDuration = usePlaybackStore(s => s.setVideoDragStartDuration);
+  const videoDragStartTrimStart  = usePlaybackStore(s => s.videoDragStartTrimStart);
+  const setVideoDragStartTrimStart = usePlaybackStore(s => s.setVideoDragStartTrimStart);
+  const selectedTimelineVideoClipId    = usePlaybackStore(s => s.selectedTimelineVideoClipId);
+  const setSelectedTimelineVideoClipId = usePlaybackStore(s => s.setSelectedTimelineVideoClipId);
+  const selectedTimelineAudioClipId    = usePlaybackStore(s => s.selectedTimelineAudioClipId);
+  const setSelectedTimelineAudioClipId = usePlaybackStore(s => s.setSelectedTimelineAudioClipId);
+
+  // ── Local UI state (not shared, no need for store) ───────────────────────
   const [activeVideoNodeLineIds, setActiveVideoNodeLineIds] = useState<number[]>([]);
-  const [script, setScript] = useState<ScriptLine[]>(() => {
-    const saved = localStorage.getItem('audiobook_script');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        return initialScript;
-      }
-    }
-    return initialScript;
-  });
-
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [playingId, setPlayingId] = useState<number | null>(null);
-  const [isCreatingSynthetic, setIsCreatingSynthetic] = useState<string | null>(null);
-  const [speakerVoiceParams, setSpeakerVoiceParams] = useState<Record<string, VoiceParams>>(() => {
-    const saved = localStorage.getItem('audiobook_voice_params');
-    return saved ? JSON.parse(saved) : {};
-  });
-  
-  const [renderProgress, setRenderProgress] = useState<RenderProgress>({ status: 'idle', currentLine: 0, totalLines: 0, finalAudioUrl: null });
-
-  const [lockedVoices, setLockedVoices] = useState<Record<string, boolean>>(() => {
-    const saved = localStorage.getItem('audiobook_locked_voices');
-    return saved ? JSON.parse(saved) : {};
-  });
-
-  const [playingVoiceRef, setPlayingVoiceRef] = useState<string | null>(null);
-
-  const [expandedScriptLines, setExpandedScriptLines] = useState<Set<number>>(new Set());
-  const [expandedVoices, setExpandedVoices] = useState<Set<string>>(new Set());
-
-  // FlowKit Visual State
-  const [isExtractingEntities, setIsExtractingEntities] = useState<boolean>(false);
-  const [globalArtStyle, setGlobalArtStyle] = useState<string>(() => {
-    return localStorage.getItem('audiobook_global_art_style') || '';
-  });
-
-  const [isGeneratingAsset, setIsGeneratingAsset] = React.useState<string | null>(null);
-  const [charactersMetadata, setCharactersMetadata] = useState<Record<string, CharacterMetadata>>({});
-  
-  // Trạng thái các Video đang Render
-  const [renderingVideos, setRenderingVideos] = useState<Record<number, string>>({}); // scene_id -> operation_name
-  const [videoStatus, setVideoStatus] = useState<Record<number, string>>({}); // scene_id -> text
-  
-  // Google Labs Project ID
-  const [flowkitProjectId, setFlowkitProjectId] = useState<string>("a59651a1-70ff-44b6-ac42-c26d90ad28ef");
-  
-  // Tự động load metadata khi mở web
-  useEffect(() => {
-    const loadMetadata = async () => {
-      try {
-        const [metaRes, profileRes] = await Promise.all([
-          axios.get('http://localhost:8000/api/characters-metadata'),
-          axios.get('http://localhost:8000/api/project-profile')
-        ]);
-        setCharactersMetadata(metaRes.data);
-        
-        if (profileRes.data && Object.keys(profileRes.data).length > 0) {
-          if (profileRes.data.speakerVoiceParams) setSpeakerVoiceParams(profileRes.data.speakerVoiceParams);
-          if (profileRes.data.lockedVoices) setLockedVoices(profileRes.data.lockedVoices);
-          if (profileRes.data.flowkitProjectId) setFlowkitProjectId(profileRes.data.flowkitProjectId);
-        }
-      } catch (e) {
-        console.error("Lỗi khi load metadata/profile", e);
-      }
-    };
-    loadMetadata();
-  }, []);
-  const [isGeneratingVideo, setIsGeneratingVideo] = useState<number | null>(null);
-  const [isRegeneratingPrompt, setIsRegeneratingPrompt] = useState<number | null>(null);
-  const [isEnhancingMotion, setIsEnhancingMotion] = useState<number | null>(null);
-
-  const handleRegenPrompt = async (lineId: number, text: string, visualReferences: string[], index: number) => {
-    setIsRegeneratingPrompt(lineId);
-    try {
-      const prevContext = index > 0 ? script[index - 1].text : "";
-      const refIds = visualReferences.map(r => r.toLowerCase());
-      const res = await axios.post('http://localhost:8000/api/regen-visual-prompt', {
-        line_text: text,
-        context_text: prevContext,
-        visual_references: refIds
-      });
-      if (res.data.status === 'success') {
-        const newScript = [...script];
-        newScript[index].image_prompt = res.data.prompt;
-        setScript(newScript);
-      }
-    } catch (error) {
-      console.error(error);
-      alert("Lỗi khi tạo lại prompt.");
-    } finally {
-      setIsRegeneratingPrompt(null);
-    }
-  };
+  const [isGenerating, setIsGenerating]                     = useState(false);
+  const [playingId, setPlayingId]                           = useState<number | null>(null);
+  const [isCreatingSynthetic, setIsCreatingSynthetic]       = useState<string | null>(null);
+  const [playingVoiceRef, setPlayingVoiceRef]               = useState<string | null>(null);
+  const [expandedScriptLines, setExpandedScriptLines]       = useState<Set<number>>(new Set());
+  const [expandedVoices, setExpandedVoices]                 = useState<Set<string>>(new Set());
+  const [isExtractingEntities, setIsExtractingEntities]     = useState<boolean>(false);
+  const [isGeneratingAsset, setIsGeneratingAsset]           = useState<string | null>(null);
+  const [renderingVideos, setRenderingVideos]               = useState<Record<number, string>>({});
+  const [videoStatus, setVideoStatus]                       = useState<Record<number, string>>({});
+  const [isSortingMode, setIsSortingMode]                   = useState(false);
+  const dragItem     = useRef<number | null>(null);
+  const dragOverItem = useRef<number | null>(null);
+  const [isGeneratingVideo, setIsGeneratingVideo]           = useState<number | null>(null);
+  const [isRegeneratingPrompt, setIsRegeneratingPrompt]     = useState<number | null>(null);
+  const [isEnhancingMotion, setIsEnhancingMotion]           = useState<number | null>(null);
+  const timelineScrollRef = useRef<HTMLDivElement>(null);
 
   const toggleScriptLine = (id: number, e: React.MouseEvent) => {
-    // Only toggle if not clicking on interactive elements
     const target = e.target as HTMLElement;
     if (target.closest('button') || target.closest('input') || target.closest('select')) return;
-    
     setExpandedScriptLines(prev => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -203,7 +179,6 @@ function App() {
   const toggleVoice = (speaker: string, e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
     if (target.closest('button') || target.closest('input') || target.closest('select')) return;
-
     setExpandedVoices(prev => {
       const next = new Set(prev);
       if (next.has(speaker)) next.delete(speaker);
@@ -212,71 +187,44 @@ function App() {
     });
   };
 
-  // Timeline Resize State
-  const [timelineHeight, setTimelineHeight] = useState(() => {
-    const saved = localStorage.getItem('audiobook_timeline_height');
-    return saved ? parseInt(saved) : 256;
-  });
-
   const handleTimelineResizeStart = (e: React.MouseEvent) => {
     e.preventDefault();
-    
     const startY = e.clientY;
     const startHeight = timelineHeight;
-    
     const handleMouseMove = (moveEvent: MouseEvent) => {
       const deltaY = startY - moveEvent.clientY;
-      const newHeight = Math.max(100, Math.min(window.innerHeight - 100, startHeight + deltaY));
-      setTimelineHeight(newHeight);
+      setTimelineHeight(Math.max(100, Math.min(window.innerHeight - 100, startHeight + deltaY)));
     };
-    
     const handleMouseUp = () => {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-    
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
   };
 
+  // Load metadata on mount
   useEffect(() => {
-    localStorage.setItem('audiobook_timeline_height', timelineHeight.toString());
-  }, [timelineHeight]);
+    const loadMetadata = async () => {
+      try {
+        const [metaRes, profileRes] = await Promise.all([
+          axios.get(API.charactersMetadata),
+          axios.get(API.projectProfile)
+        ]);
+        setCharactersMetadata(metaRes.data);
+        if (profileRes.data && Object.keys(profileRes.data).length > 0) {
+          if (profileRes.data.speakerVoiceParams) setSpeakerVoiceParams(profileRes.data.speakerVoiceParams);
+          if (profileRes.data.lockedVoices) setLockedVoices(profileRes.data.lockedVoices);
+          if (profileRes.data.flowkitProjectId) setFlowkitProjectId(profileRes.data.flowkitProjectId);
+        }
+      } catch (e) {
+        console.error('Lỗi khi load metadata/profile', e);
+      }
+    };
+    loadMetadata();
+  }, []);
 
-  // Drag and Drop (Sắp xếp) state cho Script
-  const [isSortingMode, setIsSortingMode] = useState(false);
-  const dragItem = useRef<number | null>(null);
-  const dragOverItem = useRef<number | null>(null);
 
-  // Timeline Editor state
-  const [timelineClips, setTimelineClips] = useState<TimelineClip[]>(() => {
-    const saved = localStorage.getItem('audiobook_timeline_clips');
-    return saved ? JSON.parse(saved) : [];
-  });
-  const [timelineVideoClips, setTimelineVideoClips] = useState<TimelineVideoClip[]>(() => {
-    const saved = localStorage.getItem('audiobook_timeline_video_clips');
-    return saved ? JSON.parse(saved) : [];
-  });
-  const [zoomLevel, setZoomLevel] = useState(50);
-  const timelineScrollRef = useRef<HTMLDivElement>(null);
-
-  // Timeline Drag & Drop state
-  const [draggingTimelineClipId, setDraggingTimelineClipId] = useState<string | null>(null);
-  const [timelineDragStartX, setTimelineDragStartX] = useState<number>(0);
-  const [timelineDragStartY, setTimelineDragStartY] = useState<number>(0);
-  const [timelineDragStartStartTime, setTimelineDragStartStartTime] = useState<number>(0);
-  const [timelineDragStartTrack, setTimelineDragStartTrack] = useState<number>(0);
-
-  // Timeline Video Drag & Resize state
-  const [draggingVideoClipId, setDraggingVideoClipId] = useState<string | null>(null);
-  const [resizingVideoClipId, setResizingVideoClipId] = useState<string | null>(null);
-  const [videoResizeEdge, setVideoResizeEdge] = useState<'left' | 'right' | null>(null);
-  const [videoDragStartDuration, setVideoDragStartDuration] = useState<number>(0);
-  const [videoDragStartTrimStart, setVideoDragStartTrimStart] = useState<number>(0);
-  const [selectedTimelineVideoClipId, setSelectedTimelineVideoClipId] = useState<string | null>(null);
-  const [selectedTimelineAudioClipId, setSelectedTimelineAudioClipId] = useState<string | null>(null);
-
-  useEffect(() => {
     const handleGlobalMouseMove = (e: MouseEvent) => {
       if (!draggingTimelineClipId && !draggingVideoClipId && !resizingVideoClipId) return;
       
@@ -442,9 +390,7 @@ function App() {
     seekTimelineTo(Math.max(0, x / zoomLevel));
   };
 
-  // Timeline Playback state
-  const [isPlayingTimeline, setIsPlayingTimeline] = useState(false);
-  const [timelineTime, setTimelineTime] = useState(0);
+  // Timeline Playback state (from Zustand — refs stay local for DOM access)
   const timelineAudioRefs = useRef<{[id: string]: HTMLAudioElement}>({});
   const timelineVideoRefs = useRef<{[id: string]: HTMLVideoElement}>({});
 
@@ -523,18 +469,8 @@ function App() {
   const importInputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Lưu state vào localStorage mỗi khi có thay đổi
-  useEffect(() => {
-    localStorage.setItem('audiobook_script', JSON.stringify(script));
-    localStorage.setItem('audiobook_locked_voices', JSON.stringify(lockedVoices));
-    localStorage.setItem('audiobook_voice_params', JSON.stringify(speakerVoiceParams));
-    localStorage.setItem('audiobook_timeline_clips', JSON.stringify(timelineClips));
-    localStorage.setItem('audiobook_timeline_video_clips', JSON.stringify(timelineVideoClips));
-  }, [script, lockedVoices, speakerVoiceParams, timelineClips, timelineVideoClips]);
-
-  useEffect(() => {
-    localStorage.setItem('audiobook_active_tab', activeTab);
-  }, [activeTab]);
+  // localStorage persistence is now handled by Zustand's persist middleware
+  // (useProjectStore) — manual useEffects removed.
 
   // ── Audio Mixer Hook ──────────────────────────────────────────────────────
   const { mixAndExport: handleMixAndExport } = useAudioMixer({
