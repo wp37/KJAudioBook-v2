@@ -296,12 +296,12 @@ export function ScriptSidebar({
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl shrink-0">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-2">
-              <Settings className="w-5 h-5 text-purple-400" />
+              <Settings className="w-5 h-5 text-indigo-400" />
               <h2 className="text-lg font-semibold text-slate-100">Voice Casting</h2>
             </div>
             <button
               onClick={handleSaveProfile}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-lg transition-colors text-xs font-medium"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors text-xs font-medium"
               title="Lưu các thiết lập Giọng nói và Google Project ID"
             >
               <Save className="w-3.5 h-3.5" /> Lưu Cấu Hình

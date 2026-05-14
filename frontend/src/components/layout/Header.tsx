@@ -73,10 +73,10 @@ export function Header({
 
         {/* Logo */}
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+          <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
             <Mic className="w-4 h-4 text-white" />
           </div>
-          <h1 className="text-lg font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+          <h1 className="text-lg font-bold text-slate-100">
             AudioBook Studio
           </h1>
         </div>
@@ -187,7 +187,7 @@ export function Header({
                 id="btn-render-all"
                 onClick={handleRenderAll}
                 disabled={isRendering || isGenerating}
-                className="flex items-center gap-2 px-5 py-2 text-sm font-medium rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white shadow-lg shadow-indigo-500/25 transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
+                className="flex items-center gap-2 px-5 py-2 text-sm font-medium rounded-full bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/25 transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
               >
                 {isRendering ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4 fill-current" />}
                 {renderButtonLabel}
@@ -211,7 +211,7 @@ export function Header({
               <button
                 id="btn-mix-export"
                 onClick={handleMixAndExport}
-                className="flex items-center gap-2 px-5 py-2 text-sm font-medium rounded-full bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white shadow-lg shadow-amber-500/25 transition-all hover:scale-105 active:scale-95"
+                className="flex items-center gap-2 px-5 py-2 text-sm font-medium rounded-full bg-amber-600 hover:bg-amber-500 text-white shadow-lg shadow-amber-500/25 transition-all hover:scale-105 active:scale-95"
               >
                 <Play className="w-4 h-4 fill-current" />
                 Mix & Export
@@ -224,7 +224,7 @@ export function Header({
             <button
               id="btn-sync-timeline"
               onClick={() => { handleSyncToTimeline(); setActiveTab('post-production'); }}
-              className="flex items-center gap-2 px-5 py-2 text-sm font-medium rounded-full bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white shadow-lg shadow-amber-500/25 transition-all hover:scale-105 active:scale-95"
+              className="flex items-center gap-2 px-5 py-2 text-sm font-medium rounded-full bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-500/25 transition-all hover:scale-105 active:scale-95"
             >
               <Video className="w-4 h-4 fill-current" />
               Sync To Timeline

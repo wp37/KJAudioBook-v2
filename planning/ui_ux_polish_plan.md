@@ -28,7 +28,7 @@
 - **Outcome:** Header drops from 6 → 2 visible buttons per tab
 - **Risk:** Low. Pure visual reorg.
 
-### [ ] 2. Tighten the color palette
+### [x] 2. Tighten the color palette
 - **Files:** `components/layout/Header.tsx`, `components/script/ScriptSidebar.tsx`, `components/timeline/*`, button instances in `App.tsx`
 - **Today:** indigo, purple, amber, orange, emerald, red, plus indigo→purple gradients
 - **Change:**
