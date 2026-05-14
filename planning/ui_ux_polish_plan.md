@@ -95,7 +95,8 @@ Added `title=` to: VideoClip delete X, AudioClip delete X, Timeline play/pause, 
   - Persist state as `isVoicePanelCollapsed: boolean` in `useProjectStore`
 - **Risk:** Medium — needs to verify the grid math doesn't break
 
-### [ ] 8. Move secondary per-line actions into a row-hover `⋯` overflow menu
+### [~] 8. Move secondary per-line actions into a row-hover `⋯` overflow menu — **SKIPPED**
+On inspection the per-line action area only has 2 visible buttons (play sample + delete) — the plan's premise of 5-6 cluttered buttons was based on a misread of the code. Adding an overflow menu would hide a frequent action (delete) behind hover, making it less discoverable. Real clutter source was the status indicators (handled in #8a).
 - **Files:** `components/script/ScriptSidebar.tsx`
 - **Today:** Each script line shows: render-status chip, delete, motion-enhance, regen prompt, expand chevron, drag handle — all visible by default
 - **Change:**
@@ -103,7 +104,8 @@ Added `title=` to: VideoClip delete X, AudioClip delete X, Timeline play/pause, 
   - Move into a `⋯` overflow shown on row-hover: delete, motion-enhance, regen-prompt, video buttons
 - **Risk:** Medium — touches the densest component
 
-### [ ] 8a. Render-status: chip → colored dot
+### [x] 8a. Render-status: chip → colored dot
+Replaced the 5x5 Loader2 spinner + green ✅ emoji combo with a single 8px colored dot per line: indigo+pulse+glow (rendering this line), emerald+glow (done), red (error). Tooltip on hover. Dramatically less visual noise across long scripts.
 - **Files:** `components/script/ScriptSidebar.tsx`
 - **Today:** Full-text status labels per line take a row's worth of width
 - **Change:**

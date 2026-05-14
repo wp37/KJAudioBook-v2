@@ -287,12 +287,20 @@ export function ScriptSidebar({
 
                   {/* Action buttons */}
                   <div className="flex sm:flex-col justify-end gap-2 shrink-0 items-center">
-                    {renderProgress.status === 'rendering' && renderProgress.currentLine === index + 1 && (
-                      <Loader2 className="w-5 h-5 text-indigo-400 animate-spin" />
-                    )}
-                    {renderProgress.status === 'done' && (
-                      <span className="text-emerald-400">✅</span>
-                    )}
+                    {/* Render status dot — compact replacement for spinner/checkmark chips */}
+                    {(() => {
+                      const isThisRendering = renderProgress.status === 'rendering' && renderProgress.currentLine === index + 1;
+                      const isDone = renderProgress.status === 'done';
+                      const isError = renderProgress.status === 'error';
+                      if (!isThisRendering && !isDone && !isError) return null;
+                      const dotClass = isThisRendering
+                        ? 'bg-indigo-400 animate-pulse shadow-[0_0_6px_rgba(99,102,241,0.8)]'
+                        : isError
+                        ? 'bg-red-400'
+                        : 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.6)]';
+                      const tip = isThisRendering ? 'Đang render dòng này...' : isError ? 'Lỗi render' : 'Đã render xong';
+                      return <span className={`w-2 h-2 rounded-full ${dotClass}`} title={tip} />;
+                    })()}
                     <button
                       onClick={() => playSample(line.id, line.text, line.speaker)}
                       disabled={playingId !== null}
