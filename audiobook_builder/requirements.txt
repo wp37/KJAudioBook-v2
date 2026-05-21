@@ -1,3 +1,12 @@
+# Web Framework
+fastapi
+uvicorn[standard]
+python-dotenv
+pydantic
+
+# AI & LLM
+google-generativeai
+
 # OmniVoice / TTS dependencies
 torch
 torchaudio
@@ -11,3 +20,4 @@ pydub
 
 # Utilities
 tqdm
+aiofiles

@@ -8,7 +8,7 @@ from pydub import AudioSegment
 from text_processor import clean_markdown, chunk_text, safe_call_gemini_director
 from audio_generator import AudioGenerator
 
-INPUT_DIR = r"f:\AntiGravity\AudioBook-KJ\The_Architects_of_the_Living_Loom"
+INPUT_DIR = os.getenv("INPUT_DIR", "inputs")
 OUTPUT_DIR = "output"
 TEMP_DIR = "temp_audio"
 PROGRESS_FILE = "progress.json"

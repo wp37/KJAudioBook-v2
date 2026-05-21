@@ -1,10 +1,21 @@
 import os
 import re
 import json
-import subprocess
 import time
 import sys
 sys.stdout.reconfigure(encoding='utf-8')
+
+import google.generativeai as genai
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# Khởi tạo Gemini API
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
+else:
+    print("⚠️ WARNING: GEMINI_API_KEY not found. Set it in .env file or environment variables.")
 
 def clean_markdown(md_text):
     """Làm sạch các thẻ Markdown và Metadata không cần thiết."""
@@ -29,7 +40,10 @@ def chunk_text(text):
     return paragraphs
 
 def call_gemini_director(text_chunk):
-    """Gọi Gemini CLI để đóng vai trò đạo diễn, xử lý văn bản cho TTS."""
+    """Gọi Gemini API để đóng vai trò đạo diễn, xử lý văn bản cho TTS."""
+    if not GEMINI_API_KEY:
+        raise Exception("GEMINI_API_KEY not configured. Please set it in .env file.")
+    
     system_prompt = """Bạn là một Đạo diễn Lồng Tiếng (Audiobook Director) chuyên nghiệp.
 Nhiệm vụ của bạn là chuẩn bị kịch bản cho hệ thống AI Text-To-Speech (TTS).
 Hãy đọc đoạn văn bản sau và thực hiện:
@@ -58,29 +72,13 @@ BẠN PHẢI TRẢ VỀ DUY NHẤT MỘT MẢNG JSON, tuyệt đối không có 
 
     full_prompt = f"SYSTEM INSTRUCTION:\n{system_prompt}\n\nUSER INPUT:\n{text_chunk}\n"
     
-    # Chạy lệnh Gemini CLI thông qua cmd.exe
-    process = subprocess.Popen(
-        ['cmd.exe', '/c', 'gemini', '--skip-trust', '-o', 'json'],
-        stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-        encoding='utf-8'
-    )
-    
-    # Bơm prompt vào stdin và chờ kết quả
-    stdout_data, stderr_data = process.communicate(input=full_prompt)
-    
-    if process.returncode != 0:
-        print(f"Gemini CLI Error: {stderr_data}")
-        raise Exception(f"Gemini CLI exited with code {process.returncode}")
-        
     try:
-        # Bóc lớp vỏ JSON Telemetry
-        telemetry = json.loads(stdout_data.strip())
-        ai_text = telemetry.get('response', '').strip()
+        # Gọi Gemini API
+        model = genai.GenerativeModel("gemini-pro")
+        response = model.generate_content(full_prompt)
+        ai_text = response.text.strip()
         
-        # Dọn dẹp thẻ markdown code block nếu AI vẫn ngoan cố trả về
+        # Dọn dẹp thẻ markdown code block nếu AI trả về
         if ai_text.startswith('```json'):
             ai_text = ai_text.replace('```json\n', '', 1)
             if ai_text.endswith('```'):
@@ -89,10 +87,13 @@ BẠN PHẢI TRẢ VỀ DUY NHẤT MỘT MẢNG JSON, tuyệt đối không có 
             ai_text = ai_text.replace('```\n', '', 1)
             if ai_text.endswith('```'):
                 ai_text = ai_text[:-3].strip()
-                
+        
         return json.loads(ai_text)
     except json.JSONDecodeError as e:
-        print(f"Lỗi Parse JSON từ Gemini.\nRaw output: {ai_text if 'ai_text' in locals() else stdout_data}")
+        print(f"Lỗi Parse JSON từ Gemini.\nRaw output: {ai_text if 'ai_text' in locals() else response.text}")
+        raise e
+    except Exception as e:
+        print(f"Lỗi gọi Gemini API: {e}")
         raise e
 
 def safe_call_gemini_director(text_chunk, retries=3):

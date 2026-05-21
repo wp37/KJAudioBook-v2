@@ -1,6 +1,5 @@
 import os
 import json
-import subprocess
 import time
 import base64
 import asyncio
@@ -8,9 +7,23 @@ import sys
 
 sys.stdout.reconfigure(encoding='utf-8')
 
+import google.generativeai as genai
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# Khởi tạo Gemini API
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
+
 METADATA_FILE = os.path.join(os.path.dirname(__file__), "characters_metadata.json")
 
 def call_gemini_for_entities(markdown_text, existing_metadata):
+    if not GEMINI_API_KEY:
+        print("⚠️ GEMINI_API_KEY not configured")
+        return []
+    
     system_prompt = f"""Bạn là một Đạo diễn Hình ảnh và Chuyên gia Concept Art.
 Nhiệm vụ của bạn là đọc kịch bản Markdown và trích xuất ra các ĐỊA ĐIỂM/BỐI CẢNH (Locations) và NHÂN VẬT (Characters) quan trọng.
 Đây là danh sách các nhân vật/địa điểm ĐÃ CÓ trong hệ thống:
@@ -38,34 +51,23 @@ TUYỆT ĐỐI trả về đúng định dạng mảng JSON như sau, không có
     "image_prompt": "Portrait of a 20-year-old young man, short messy black hair, sharp jawline, determined piercing brown eyes, wearing a heavily worn and torn futuristic white and grey astronaut suit with neon accents, dark sci-fi style, cinematic rim lighting, dramatic shadows, photorealistic, 8k resolution, highly detailed character concept art"
   }}
 ]
-CHỈ trả về những thực thể CÓ XUẤT HIỆN trong đoạn kịch bản dưới đây. Mọi image_prompt phải viết bằng Tiếng Anh.
-"""
+CHỈ trả về những thực thể CÓ XUẤT HIỆN trong đoạn kịch bản dưới đây. Mọi image_prompt phải viết bằng Tiếng Anh."""
+    
     full_prompt = f"SYSTEM INSTRUCTION:\n{system_prompt}\n\nUSER SCRIPT:\n{markdown_text}\n"
     
-    process = subprocess.Popen(
-        ['cmd.exe', '/c', 'gemini', '--skip-trust', '-o', 'json'],
-        stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-        encoding='utf-8'
-    )
-    
-    stdout_data, stderr_data = process.communicate(input=full_prompt)
-    
-    if process.returncode != 0:
-        print(f"Gemini CLI Error: {stderr_data}")
-        return []
-        
     try:
-        telemetry = json.loads(stdout_data.strip())
-        ai_text = telemetry.get('response', '').strip()
+        model = genai.GenerativeModel("gemini-pro")
+        response = model.generate_content(full_prompt)
+        ai_text = response.text.strip()
         
         # Cleanup JSON
-        if ai_text.startswith('```json'): ai_text = ai_text.replace('```json\n', '', 1)
-        if ai_text.endswith('```'): ai_text = ai_text[:-3].strip()
-        if ai_text.startswith('```'): ai_text = ai_text.replace('```\n', '', 1)
-            
+        if ai_text.startswith('```json'):
+            ai_text = ai_text.replace('```json\n', '', 1)
+        if ai_text.endswith('```'):
+            ai_text = ai_text[:-3].strip()
+        if ai_text.startswith('```'):
+            ai_text = ai_text.replace('```\n', '', 1)
+        
         return json.loads(ai_text)
     except Exception as e:
         print(f"Lỗi Parse JSON Entity từ Gemini: {e}")
@@ -182,6 +184,14 @@ def regenerate_line_prompt(line_text, context_text, visual_references):
     if os.path.exists(METADATA_FILE):
         with open(METADATA_FILE, 'r', encoding='utf-8') as f:
             metadata = json.load(f)
+     f not GEMINI_API_KEY:
+        print("⚠️ GEMINI_API_KEY not configured")
+        return ""
+    
+    metadata = {}
+    if os.path.exists(METADATA_FILE):
+        with open(METADATA_FILE, 'r', encoding='utf-8') as f:
+            metadata = json.load(f)
             
     ref_descriptions = []
     for ref_id in visual_references:
@@ -207,42 +217,22 @@ Please write the English prompt for this scene:"""
 
     full_prompt = f"SYSTEM INSTRUCTION:\n{system_prompt}\n\nUSER PROMPT:\n{user_prompt}\n"
 
-    process = subprocess.Popen(
-        ['cmd.exe', '/c', 'gemini', '--skip-trust', '-o', 'json'],
-        stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-        encoding='utf-8'
-    )
-    
-    stdout_data, stderr_data = process.communicate(input=full_prompt)
-    
-    if process.returncode != 0:
-        print(f"Gemini CLI Error: {stderr_data}")
-        return ""
-        
     try:
-        telemetry = json.loads(stdout_data.strip())
-        ai_text = telemetry.get('response', '').strip()
+        model = genai.GenerativeModel("gemini-pro")
+        response = model.generate_content(full_prompt)
+        ai_text = response.text.strip()
         
-        # Cleanup markdown and extra characters
-        if ai_text.startswith('```markdown'): ai_text = ai_text.replace('```markdown\n', '', 1)
-        if ai_text.startswith('```text'): ai_text = ai_text.replace('```text\n', '', 1)
-        if ai_text.startswith('```'): ai_text = ai_text.replace('```\n', '', 1)
-        if ai_text.endswith('```'): ai_text = ai_text[:-3].strip()
-        if ai_text.startswith('"') and ai_text.endswith('"'): ai_text = ai_text[1:-1].strip()
+        # Cleanup
+        if ai_text.startswith('```'):
+            ai_text = ai_text.split('\n', 1)[1] if '\n' in ai_text else ai_text
+        if ai_text.endswith('```'):
+            ai_text = ai_text[:-3].strip()
+        if ai_text.startswith('"') and ai_text.endswith('"'):
+            ai_text = ai_text[1:-1].strip()
         
         return ai_text.strip()
     except Exception as e:
-        print(f"Error parsing Gemini CLI output: {e}")
-        return ""
-
-def call_gemini_director_storyboard(script_list, metadata_dict):
-    system_prompt = f"""You are a professional Video Director and Storyboard Artist.
-Your task is to take an Audio Script and the available Visual Assets, and break the script down into a sequence of camera "Shots" (Storyboard Nodes).
-
-AVAILABLE ASSETS:
+        print(f"Error generating line prompt from Gemini
 {json.dumps(metadata_dict, ensure_ascii=False)}
 
 RULES:
@@ -296,7 +286,9 @@ Format:
 
 
 def generate_storyboard(script_lines, metadata):
-    import json, subprocess
+    if not GEMINI_API_KEY:
+        print("⚠️ GEMINI_API_KEY not configured")
+        return []
     
     # Chuẩn bị dữ liệu
     script_text = ""
@@ -328,29 +320,18 @@ QUY TẮC:
 """
     full_prompt = f"SYSTEM INSTRUCTION:\n{system_prompt}\n\nUSER SCRIPT:\n{script_text}\n"
     
-    process = subprocess.Popen(
-        ['cmd.exe', '/c', 'gemini', '--skip-trust', '-o', 'json'],
-        stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-        encoding='utf-8'
-    )
-    
-    stdout_data, stderr_data = process.communicate(input=full_prompt)
-    
-    if process.returncode != 0:
-        print(f"Gemini CLI Error: {stderr_data}")
-        return []
-        
     try:
-        telemetry = json.loads(stdout_data.strip())
-        ai_text = telemetry.get('response', '').strip()
+        model = genai.GenerativeModel("gemini-pro")
+        response = model.generate_content(full_prompt)
+        ai_text = response.text.strip()
         
-        if ai_text.startswith('```json'): ai_text = ai_text.replace('```json\n', '', 1)
-        if ai_text.endswith('```'): ai_text = ai_text[:-3].strip()
-        if ai_text.startswith('```'): ai_text = ai_text.replace('```\n', '', 1)
-            
+        if ai_text.startswith('```json'):
+            ai_text = ai_text.replace('```json\n', '', 1)
+        if ai_text.endswith('```'):
+            ai_text = ai_text[:-3].strip()
+        if ai_text.startswith('```'):
+            ai_text = ai_text.replace('```\n', '', 1)
+        
         return json.loads(ai_text)
     except Exception as e:
         print(f"Lỗi Parse Storyboard JSON từ Gemini: {e}")
